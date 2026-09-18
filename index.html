@@ -1,1 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a09">
+<title>CricxCrate — Live</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/controls.css" crossorigin="anonymous">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+:root{--black:#060705;--black2:#0f110d;--cream:#f2efe4;--soft:#b8b6aa;--line:rgba(242,239,228,.12);--lime:#d8ff3e;--lime-glow:rgba(216,255,62,.3);--coral:#ff725f;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color: transparent;}
+html{background:var(--black);scroll-behavior:smooth;}
+body{background:var(--black);color:var(--cream);font-family:"DM Sans",sans-serif;overflow-x:hidden;}
+button{font:inherit;border:0;cursor:pointer;position:relative;overflow:hidden;}
+img{display:block;max-width:100%;}
+::-webkit-scrollbar{width:0;height:0;}
 
+button:active, .live-card:active, .match-poster:active, .schedule-card:active, .world-card:active {
+  transform: scale(0.98) !important;
+  transition: transform 0.1s cubic-bezier(0.16,1,0.3,1);
+}
+
+.ripple{position:absolute;background:rgba(255,255,255,0.35);border-radius:50%;transform:scale(0);animation:rippleAnim 0.5s linear;pointer-events:none;}
+@keyframes rippleAnim{to{transform:scale(4);opacity:0;}}
+
+@keyframes lazyFadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+@keyframes scaleIn{from{opacity:0;transform:scale(0.95);}to{opacity:1;transform:scale(1);}}
+.lazy-card{opacity:0;animation:lazyFadeUp 0.5s cubic-bezier(0.16,1,0.3,1) forwards;}
+
+/* FLUID RESPONSIVE POPUPS USING CLAMP & VW */
+.tg-popup-overlay{position:fixed;z-index:999999;inset:0;background:rgba(6,7,5,.88);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.2s ease;padding:16px;}
+.tg-popup-overlay.show{opacity:1;pointer-events:all;}
+
+.tg-popup-box{background:var(--black2);border:1px solid rgba(216,255,62,0.25);border-radius:clamp(16px, 2.5vw, 24px);padding:clamp(20px, 4vw, 36px);width:min(440px, 92vw);text-align:center;box-shadow:0 30px 80px rgba(0,0,0,0.85);transform:scale(0.95);transition:transform 0.2s ease;position:relative;}
+.tg-popup-overlay.show .tg-popup-box{transform:scale(1);}
+
+.tg-popup-icon{width:clamp(48px, 8vw, 64px);height:clamp(48px, 8vw, 64px);margin:0 auto clamp(12px, 2vw, 18px);background:rgba(216,255,62,0.08);border:1px solid rgba(216,255,62,0.2);border-radius:50%;display:grid;place-items:center;}
+.tg-popup-icon svg{width:clamp(20px, 3.5vw, 28px);height:clamp(20px, 3.5vw, 28px);fill:var(--lime);}
+.tg-popup-title{font-family:"Space Grotesk";font-size:clamp(18px, 3.5vw, 26px);font-weight:700;color:var(--cream);margin-bottom:clamp(6px, 1vw, 10px);}
+.tg-popup-desc{font-family:"DM Sans";font-size:clamp(9.5px, 1.8vw, 12px);color:var(--soft);line-height:1.5;margin-bottom:clamp(18px, 3vw, 28px);}
+
+.tg-btn-main{height:clamp(42px, 7vw, 50px);width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--lime);color:var(--black);font-family:"Space Grotesk";font-size:clamp(8.5px, 1.6vw, 10px);font-weight:800;letter-spacing:1px;border-radius:10px;text-decoration:none;text-transform:uppercase;transition:.3s;}
+.tg-btn-main:hover{background:#e8ff78;}
+
+/* FLUID MASSIVE GIGANTIC BUTTON */
+.tg-btn-gigantic{height:clamp(50px, 8.5vw, 62px);width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:var(--lime);color:var(--black);font-family:"Space Grotesk";font-size:clamp(10px, 2vw, 12.5px);font-weight:800;letter-spacing:1.5px;border-radius:14px;text-decoration:none;text-transform:uppercase;transition:.3s;box-shadow:0 8px 25px rgba(216,255,62,0.4);}
+.tg-btn-gigantic:hover{background:#e8ff78;transform:translateY(-2px);}
+
+.tg-btn-sub{margin-top:clamp(10px, 2vw, 14px);background:none;border:0;color:#777970;font-family:"DM Sans";font-size:clamp(8px, 1.5vw, 9.5px);font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;padding:6px;}
+.tg-btn-sub:hover{color:var(--cream);}
+
+.tg-close-cross{position:absolute;top:clamp(12px, 2vw, 16px);right:clamp(12px, 2vw, 16px);width:clamp(30px, 5vw, 36px);height:clamp(30px, 5vw, 36px);background:rgba(255,255,255,0.05);border:1px solid var(--line);border-radius:50%;color:var(--cream);font-size:clamp(12px, 2vw, 15px);display:grid;place-items:center;cursor:pointer;transition:.2s;}
+.tg-close-cross:hover{background:var(--lime);color:var(--black);border-color:var(--lime);}
+</style>
+<style>
+.nav{position:fixed;z-index:700;top:0;left:0;right:0;height:70px;display:flex;align-items:center;padding:0 24px;transition:all .4s;}
+.nav.scrolled{background:rgba(6,7,5,.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,0.6);}
+.nav-inner{width:min(1400px,100%);margin:auto;display:flex;align-items:center;}
+.brand{display:flex;align-items:center;gap:10px;cursor:pointer;}
+.brand-symbol{width:26px;height:26px;position:relative;background:var(--lime);transform:rotate(45deg);border-radius:3px;box-shadow:0 0 12px var(--lime-glow);}
+.brand-symbol:after{content:"";position:absolute;width:6px;height:6px;left:10px;top:10px;background:var(--black);border-radius:1px;}
+.brand-name{font-family:"Space Grotesk";font-size:14px;font-weight:700;letter-spacing:-.5px;color:var(--cream);}
+.nav-links{display:flex;gap:4px;margin-left:40px;}
+.nav-links button{position:relative;color:#77786f;background:none;padding:8px 12px;font-size:8.5px;letter-spacing:1px;font-weight:700;transition:.3s;border-radius:6px;}
+.nav-links button:after{content:"";position:absolute;left:12px;right:12px;bottom:4px;height:2px;background:var(--lime);transform:scaleX(0);transition:.3s cubic-bezier(0.16,1,0.3,1);border-radius:2px;}
+.nav-links button:hover,.nav-links button.active{color:var(--cream);background:rgba(255,255,255,0.03);}
+.nav-links button.active:after{transform:scaleX(1);}
+.nav-right{margin-left:auto;display:flex;gap:8px;}
+.nav-icon{width:34px;height:34px;display:grid;place-items:center;color:var(--cream);background:rgba(242,239,228,.04);border:1px solid var(--line);border-radius:8px;transition:.3s;}
+.nav-icon:hover{color:var(--lime);border-color:rgba(216,255,62,.4);}
+.nav-icon svg{width:14px;}
+</style>
+<style>
+.content{position:relative;z-index:20;margin-top:94px;padding-bottom:100px;}
+.wrap{width:min(1400px,calc(100% - 40px));margin:auto;}
+.section{margin-bottom:40px;}
+.section-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:14px;}
+.section-kicker{color:#62645d;font-size:6.5px;letter-spacing:1.5px;font-weight:800;}
+.section-title{margin-top:3px;font-family:"Space Grotesk";font-size:18px;line-height:1;letter-spacing:-0.8px;}
+.section-action{color:#777970;background:none;font-size:7.5px;font-weight:700;transition:.3s;}
+.section-action:hover{color:var(--lime);}
+
+.match-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.match-poster {
+  background: var(--black2);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+  display: flex;
+  flex-direction: column;
+}
+.match-poster:hover {
+  border-color: rgba(216,255,62,0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+}
+.poster-thumb-top {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-color: var(--black);
+  background-position: center;
+  border-bottom: 1px solid var(--line);
+}
+.poster-card-content {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.poster-time-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--lime);
+  font-family: "Space Grotesk";
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.poster-match-title {
+  font-family: "Space Grotesk";
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cream);
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+}
+.poster-match-synopsis {
+  color: var(--soft);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.live-rail{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 14px;}
+.live-card{flex:0 0 300px;background: var(--black2); border:1px solid var(--line); border-radius:16px; overflow:hidden; cursor:pointer; transition:.3s;}
+.live-card:hover{transform:translateY(-4px);border-color:rgba(216,255,62,.35);}
+.live-thumb-top{width:100%; height:150px; background-size:cover; background-repeat:no-repeat; background-color:var(--black); background-position:center; border-bottom:1px solid var(--line);}
+.live-card-content{padding:14px; display:flex; flex-direction:column; gap:6px;}
+
+.world-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:14px;}
+.world-card{height:180px;position:relative;overflow:hidden;background:var(--black2);cursor:pointer;border:1px solid var(--line);border-radius:16px;transition:.3s;}
+.world-card.large{grid-column: span 2;}
+@media(max-width:700px){ .world-card.large{grid-column: span 1;} }
+.world-card:hover{transform:translateY(-4px);border-color:rgba(216,255,62,.35);}
+.world-art{position:absolute;inset:0;background-size:cover;background-repeat:no-repeat;background-color:var(--black);background-position:center;transition:.6s;}
+.world-card:hover .world-art{transform:scale(1.04);}
+.world-art:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,var(--black),transparent 70%);}
+.world-copy{position:absolute;z-index:4;left:16px;bottom:14px;}
+.world-number{color:var(--lime);font-family:"Space Grotesk";font-size:7.5px;font-weight:700;}
+.world-name{margin-top:3px;font-family:"Space Grotesk";font-size:18px;letter-spacing:-0.8px;font-weight:700;}
+
+.schedule-stack {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.schedule-card {
+  background: var(--black2);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+  display: flex;
+  flex-direction: column;
+}
+.schedule-card:hover {
+  border-color: rgba(216,255,62,0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+}
+.schedule-thumb-top {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-color: var(--black);
+  background-position: center;
+  border-bottom: 1px solid var(--line);
+}
+.schedule-card-content {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.schedule-time-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--lime);
+  font-family: "Space Grotesk";
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.schedule-match-title {
+  font-family: "Space Grotesk";
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cream);
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+}
+.schedule-match-synopsis {
+  color: var(--soft);
+  font-size: 8px;
+  line-height: 1.4;
+}
+</style>
+<style>
+.page{display:none;min-height:100vh;opacity:0;transform:translateY(10px) scale(0.99);transition:opacity 0.3s cubic-bezier(0.16,1,0.3,1),transform 0.3s cubic-bezier(0.16,1,0.3,1);}
+.page.active{display:block;opacity:1;transform:translateY(0) scale(1);}
+.inner{padding-top:90px;padding-bottom:100px;}
+.back{color:#64665f;background:none;font-size:7.5px;font-weight:700;letter-spacing:1px;margin-bottom:16px;transition:.3s;}
+.back:hover{color:var(--lime);transform:translateX(-3px);}
+.page-title{font-family:"Space Grotesk";font-size:clamp(40px, 6vw, 80px);line-height:.85;letter-spacing:-3px;}
+.page-subtitle{margin-top:8px;color:#65675f;font-size:8px;}
+
+.match-layer{position:fixed;z-index:1100;inset:0;display:none;overflow:auto;background:var(--black);padding:20px 0;}
+.match-layer.open{display:block;animation:scaleIn .3s cubic-bezier(0.16,1,0.3,1);}
+.match-layer-inner{width:min(900px,calc(100% - 32px));margin:0 auto;display:flex;flex-direction:column;background:var(--black2);border:1px solid var(--line);border-radius:20px;overflow:hidden;position:relative;box-shadow:0 30px 80px rgba(0,0,0,0.8);}
+.match-art-top{width:100%;height:220px;background-size:cover;background-repeat:no-repeat;background-color:var(--black);background-position:center;border-bottom:1px solid var(--line);}
+.match-detail-bottom{padding:20px;display:flex;flex-direction:column;gap:12px;}
+.match-close{position:absolute;z-index:10;top:14px;right:14px;width:34px;height:34px;color:var(--cream);background:rgba(6,7,5,.85);border:1px solid var(--line);border-radius:50%;cursor:pointer;transition:.3s;display:grid;place-items:center;font-size:14px;}
+.match-close:hover{background:var(--lime);color:var(--black);border-color:var(--lime);}
+
+.match-live{color:var(--lime);font-size:7px;font-weight:800;letter-spacing:1.5px;}
+.match-heading{font-family:"Space Grotesk";font-size:clamp(18px, 2.8vw, 30px);line-height:1.1;letter-spacing:-0.6px;font-weight:700;color:var(--cream);}
+.match-info{color:var(--soft);font-size:8px;}
+
+.watch-live-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--lime);
+  color: var(--black);
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-family: "Space Grotesk";
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  transition: 0.3s;
+  box-shadow: 0 4px 15px var(--lime-glow);
+}
+.watch-live-btn:hover { background: #e8ff78; transform: translateY(-2px); }
+.watch-live-btn svg { width: 12px; height: 12px; fill: var(--black); }
+
+.match-bottom{width:min(1400px,calc(100% - 40px));margin:0 auto;padding:20px 0 60px;}
+.access-box{max-width:600px;padding:16px 0;border-top:1px solid var(--line);}
+.access-label{color:var(--lime);font-size:6px;font-weight:800;letter-spacing:1.2px;}
+.access-title{margin-top:4px;font-family:"Space Grotesk";font-size:18px;color:var(--cream);}
+.access-text{margin-top:4px;color:var(--soft);font-size:7.5px;line-height:1.4;}
+
+/* Player Modal & Server Selector */
+.player-modal-wrapper{position:fixed;z-index:99999;inset:0;width:100vw;height:100vh;background:var(--black);display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto;animation:scaleIn .3s cubic-bezier(0.16,1,0.3,1);padding-bottom:40px;}
+.player-top-nav{height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(6,7,5,.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50;}
+.player-top-brand{font-family:"Space Grotesk";font-size:11px;font-weight:700;color:var(--cream);letter-spacing:-.5px;}
+.player-close-action{background:rgba(255,255,255,0.06);color:var(--cream);border:1px solid var(--line);padding:5px 10px;border-radius:6px;cursor:pointer;font-weight:700;font-family:"Space Grotesk";font-size:7.5px;transition:.3s;}
+.player-close-action:hover{background:var(--lime);color:var(--black);border-color:var(--lime);}
+
+.custom-server-dropdown{position:relative;display:inline-block;}
+.server-chip{display:flex;align-items:center;gap:6px;background:rgba(216,255,62,0.08);border:1px solid rgba(216,255,62,0.3);padding:5px 10px;border-radius:30px;color:var(--lime);font-family:"Space Grotesk";font-size:7.5px;font-weight:700;cursor:pointer;transition:.3s;}
+.server-chip:hover{background:rgba(216,255,62,0.15);}
+.server-chip svg{width:8px;height:8px;transition:transform 0.3s;}
+.custom-server-dropdown.open .server-chip svg{transform:rotate(180deg);}
+.server-dropdown-menu{position:absolute;top:calc(100% + 6px);right:0;width:140px;background:var(--black2);border:1px solid rgba(216,255,62,0.2);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,0.8);opacity:0;transform:translateY(-8px) scale(0.95);pointer-events:none;transition:all 0.2s cubic-bezier(0.16,1,0.3,1);z-index:100;overflow:hidden;}
+.custom-server-dropdown.open .server-dropdown-menu{opacity:1;transform:translateY(0) scale(1);pointer-events:all;}
+.server-option{padding:8px 10px;font-size:7.5px;font-weight:600;color:var(--soft);cursor:pointer;transition:.2s;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;}
+.server-option:last-child{border-bottom:none;}
+.server-option:hover{background:rgba(216,255,62,0.06);color:var(--cream);}
+.server-option.active{color:var(--lime);background:rgba(216,255,62,0.1);font-weight:750;}
+
+/* Buffering Spinner */
+.buffering-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(6,7,5,0.75);backdrop-filter:blur(6px);z-index:20;opacity:0;pointer-events:none;transition:opacity 0.25s ease;}
+.buffering-overlay.active{opacity:1;pointer-events:all;}
+.spinner{width:32px;height:32px;border:3px solid rgba(216,255,62,0.15);border-top-color:var(--lime);border-radius:50%;animation:spin 0.8s cubic-bezier(0.4,0,0.2,1) infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.buffering-text{margin-top:6px;font-family:"Space Grotesk";font-size:7.5px;font-weight:700;color:var(--lime);letter-spacing:1px;}
+
+.player-content-body{width:min(1100px,calc(100% - 24px));margin:16px auto 0;display:flex;flex-direction:column;gap:14px;}
+.player-rig-box{width:100%;aspect-ratio:16/9;position:relative;background:#000;overflow:hidden;border-radius:12px;border:1px solid rgba(216,255,62,0.3);box-shadow:0 15px 50px rgba(0,0,0,0.8);isolation:isolate;}
+.player-rig-box.fs-active{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;z-index:9999999!important;border-radius:0!important;border:none!important;background:#000!important;}
+.player-meta-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:2px 0;flex-wrap:wrap;}
+.stream-title-group{display:flex;flex-direction:column;gap:3px;}
+.stream-title-group strong{font-family:"Space Grotesk";font-size:14px;font-weight:700;color:var(--cream);letter-spacing:-.2px;}
+.stream-title-group span{font-family:"Space Grotesk";color:var(--soft);font-size:7.5px;letter-spacing:1px;font-weight:700;text-transform:uppercase;}
+.share-action-btn{height:34px;padding:0 16px;display:inline-flex;align-items:center;gap:5px;border-radius:30px;background:rgba(242,239,228,.04);border:1px solid rgba(216,255,62,0.3);color:var(--cream);font-family:"Space Grotesk";font-size:7.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:.3s;}
+.share-action-btn svg{width:10px;height:10px;stroke:var(--lime);stroke-width:2.2;}
+.share-action-btn:hover{background:var(--lime);color:var(--black);border-color:var(--lime);}
+.player-community-card{margin-top:10px;background:var(--black2);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+.player-comm-title{font-family:"Space Grotesk";font-size:18px;font-weight:700;letter-spacing:-0.4px;color:var(--cream);}
+.player-comm-title span{color:var(--soft);}
+.comm-join-btn{height:34px;padding:0 18px;background:var(--lime);color:var(--black);font-family:"Space Grotesk";font-size:7.5px;font-weight:800;letter-spacing:1px;border-radius:30px;text-decoration:none;display:inline-flex;align-items:center;transition:.3s;}
+.comm-join-btn:hover{background:#e8ff78;}
+.search{position:fixed;z-index:1500;inset:0;display:none;background:rgba(6,7,5,.97);backdrop-filter:blur(25px);}
+.search.open{display:block;}
+.search-inner{width:min(900px,calc(100% - 28px));margin:80px auto;}
+.search-close{color:#666860;background:none;font-size:7px;font-weight:800;letter-spacing:1px;margin-bottom:20px;transition:.3s;}
+.search-input{width:100%;padding-bottom:12px;color:var(--cream);background:none;outline:0;border:0;border-bottom:1px solid var(--line);font-family:"Space Grotesk";font-size:clamp(26px,4.5vw,50px);letter-spacing:-1.5px;}
+.search-results{margin-top:16px;}
+.mobile-nav{display:none;}
+
+@media(max-width:900px){
+  .nav{padding:0 14px;}
+  .nav-links{display:none;}
+  .wrap{width:calc(100% - 28px);}
+  .content{margin-top:90px;}
+  .world-grid{grid-template-columns:1fr 1fr;}
+  .match-grid{grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));gap:8px;}
+  .schedule-stack{grid-template-columns:1fr;}
+  .mobile-nav{position:fixed;z-index:800;display:flex;left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));height:52px;align-items:center;justify-content:space-around;background:rgba(15,17,13,.92);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(20px);box-shadow:0 8px 25px rgba(0,0,0,.5);}
+  .mobile-nav button{color:#64665f;background:none;display:flex;flex-direction:column;align-items:center;gap:2.5px;font-size:6px;font-weight:700;}
+  .mobile-nav button.active{color:var(--lime);}
+  .mobile-nav svg{width:12px;}
+  .player-content-body{width:calc(100% - 16px);margin-top:10px;}
+  .player-community-card{padding:16px 14px;}
+  .player-comm-title{font-size:15px;}
+}
+</style>
+
+<body>
+<!-- FIRST TELEGRAM POPUP -->
+<div class="tg-popup-overlay" id="tgPopup1">
+  <div class="tg-popup-box">
+    <button class="tg-close-cross" onclick="proceedToSecondPopup()">✕</button>
+    <div class="tg-popup-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.11.03-1.84 1.18-5.21 3.45-.49.33-.94.49-1.35.48-.45-.01-1.31-.25-1.95-.46-.79-.26-1.42-.4-1.36-.84.03-.23.35-.47.96-.73 3.77-1.64 6.29-2.73 7.55-3.25 3.59-1.49 4.33-1.75 4.81-1.76.11 0 .35.03.48.14.11.09.14.22.15.34-.01.07-.01.19-.02.26z"/></svg>
+    </div>
+    <h3 class="tg-popup-title">Join Telegram</h3>
+    <p class="tg-popup-desc">Join our official Telegram channel to unlock seamless high-definition live streaming links!</p>
+    <a class="tg-btn-main" href="javascript:void(0)" onclick="proceedToSecondPopup()">JOIN NOW ↗</a>
+    <button class="tg-btn-sub" onclick="proceedToSecondPopup()">Remind me later</button>
+  </div>
+</div>
+
+<!-- SECOND TELEGRAM POPUP (MASSIVE & REPLACED LINK) -->
+<div class="tg-popup-overlay" id="tgPopup2">
+  <div class="tg-popup-box">
+    <button class="tg-close-cross" onclick="closeTgPopup2()">✕</button>
+    <div class="tg-popup-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.11.03-1.84 1.18-5.21 3.45-.49.33-.94.49-1.35.48-.45-.01-1.31-.25-1.95-.46-.79-.26-1.42-.4-1.36-.84.03-.23.35-.47.96-.73 3.77-1.64 6.29-2.73 7.55-3.25 3.59-1.49 4.33-1.75 4.81-1.76.11 0 .35.03.48.14.11.09.14.22.15.34-.01.07-.01.19-.02.26z"/></svg>
+    </div>
+    <h3 class="tg-popup-title">Unlock Full Access</h3>
+    <p class="tg-popup-desc">You are just one step away from continuous uninterrupted sports action. Join now for instant streaming access!</p>
+    <a class="tg-btn-gigantic" href="https://t.me/+9VD--MYgyMo5Yzg1" target="_blank" rel="noopener">JOIN TELEGRAM CHANNEL ↗</a>
+  </div>
+</div>
+
+<header class="nav" id="nav">
+  <div class="nav-inner">
+    <div class="brand" onclick="goHome()">
+      <div class="brand-symbol"></div>
+      <div class="brand-name">CricxCrate</div>
+    </div>
+    <nav class="nav-links">
+      <button class="active" data-nav="home" onclick="goHome()">HOME</button>
+      <button data-nav="live" onclick="goLive()">LIVE</button>
+      <button data-nav="events" onclick="goEvents()">EVENTS</button>
+      <button data-nav="schedule" onclick="goSchedule()">SCHEDULE</button>
+    </nav>
+    <div class="nav-right">
+      <button class="nav-icon" onclick="openSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7"></circle>
+          <path d="m20 20-4-4"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="home" class="page active">
+  <div class="content">
+    <div class="wrap">
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">LIVE SIGNAL</div>
+            <div class="section-title">Happening now</div>
+          </div>
+          <button class="section-action" onclick="goLive()">ALL LIVE →</button>
+        </div>
+        <div class="live-rail" id="liveRail"></div>
+      </section>
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">TOURNAMENTS</div>
+            <div class="section-title">Explore events</div>
+          </div>
+          <button class="section-action" onclick="goEvents()">ALL EVENTS →</button>
+        </div>
+        <div class="world-grid" id="worldGrid"></div>
+      </section>
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">UP NEXT</div>
+            <div class="section-title">The schedule</div>
+          </div>
+          <button class="section-action" onclick="goSchedule()">FULL SCHEDULE →</button>
+        </div>
+        <div class="schedule-stack" id="homeSchedule"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<section id="livePage" class="page inner">
+  <div class="wrap"><button class="back" onclick="goHome()">← BACK</button><h1 class="page-title">Live.</h1><p class="page-subtitle">The signal is on.</p><div class="match-grid" id="liveGrid"></div></div>
+</section>
+<section id="eventsPage" class="page inner">
+  <div class="wrap"><button class="back" onclick="goHome()">← BACK</button><h1 class="page-title">Events.</h1><p class="page-subtitle">Tournaments & Series.</p><div class="match-grid" id="eventsGrid"></div></div>
+</section>
+<section id="eventDetailModal" class="page inner">
+  <div class="wrap"><button class="back" onclick="goEvents()">← EVENTS</button><h1 class="page-title" id="eventTitle">Event.</h1><p class="page-subtitle" id="eventSubtitle"></p><div class="match-grid" id="eventGrid"></div></div>
+</section>
+<section id="schedulePage" class="page inner">
+  <div class="wrap"><button class="back" onclick="goHome()">← BACK</button><h1 class="page-title">Schedule.</h1><p class="page-subtitle">What's coming next.</p><div class="schedule-stack" id="fullSchedule" style="margin-top:24px"></div></div>
+</section>
+
+<div class="match-layer" id="matchLayer">
+  <div class="match-layer-inner">
+    <button class="match-close" onclick="closeMatch()">×</button>
+    <div class="match-art-top" id="matchBackground"></div>
+    <div class="match-detail-bottom">
+      <div class="match-live" id="matchStatus"></div>
+      <h1 class="match-heading" id="matchTitle"></h1>
+      <div class="match-info" id="matchInfo"></div>
+      <div style="margin-top:6px" id="matchActionContainer"></div>
+    </div>
+  </div>
+  <div class="match-bottom"><div class="access-box"><div class="access-label">CRICXCRATE ACCESS</div><div class="access-title">Your match. Your screen.</div><div class="access-text">Stream high-definition live sporting events smoothly through the CricxCrate media network.</div></div></div>
+</div>
+
+<div class="search" id="search"><div class="search-inner"><button class="search-close" onclick="closeSearch()">← CLOSE</button><input id="searchInput" class="search-input" placeholder="Search." autocomplete="off"><div id="searchResults" class="search-results"></div></div></div>
+
+<nav class="mobile-nav">
+  <button class="active" data-mobile="home" onclick="goHome()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 10 9-7 9 7v10H3z"/></svg>Home</button>
+  <button data-mobile="live" onclick="goLive()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="m10 8 6 4-6 4z"/></svg>Live</button>
+  <button data-mobile="events" onclick="goEvents()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Events</button>
+  <button data-mobile="schedule" onclick="goSchedule()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16"/><path d="M7 3v4M17 3v4M3 10h18"/></svg>Schedule</button>
+</nav>
+<script>
+const FEED = "https://raw.githubusercontent.com/srhady/willow-event/refs/heads/main/live_sports.json";
+const TELEGRAM = "https://t.me/+9VD--MYgyMo5Yzg1";
+let matches = []; let selected = null; let lockTimer = null; let isStreamUnlocked = false;
+let player = null; let ui = null; let serverList = []; let currentServerIndex = 0;
+const PREVIEW_TIME = 15000;
+const $ = id => document.getElementById(id);
+
+function esc(v){ return String(v ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;"); }
+
+function status(m){
+  const s = String(m?.status || "").toUpperCase();
+  if(s.includes("LIVE")) return "LIVE";
+  if(s.includes("COMPLETE") || s.includes("FINISH") || s.includes("END")) return "COMPLETED";
+  return "UPCOMING";
+}
+
+function image(m){ return m?.cover_image || ""; }
+function category(m){ 
+  const t = m?.tournament || m?.title || "";
+  if(t.includes(" - ")) return t.split(" - ")[0].trim();
+  return t || "CRICKET TOURNAMENT"; 
+}
+
+function formatToIST(timeStr) {
+  if (!timeStr) return "Upcoming";
+  return timeStr.replace("BDT", "IST").replace("EDT", "IST").replace("EST", "IST").replace("GMT", "IST");
+}
+
+async function loadFeed(){
+  try{
+    const response = await fetch(FEED + "?t=" + Date.now(), {cache:"no-store"});
+    const json = await response.json();
+    matches = Array.isArray(json) ? json : (Array.isArray(json.Matches) ? json.Matches : []);
+    localStorage.setItem("cricxcrate_willow_cache", JSON.stringify(matches));
+    renderEverything();
+    checkUrlMatchShare();
+  }catch(error){
+    const cached = localStorage.getItem("cricxcrate_willow_cache");
+    if(cached){ matches = JSON.parse(cached); renderEverything(); checkUrlMatchShare(); }
+  }
+}
+
+function checkUrlMatchShare(){
+  const hash = window.location.hash;
+  const params = new URLSearchParams(window.location.search);
+  let matchIdx = -1;
+  if(hash.includes("match=")){
+    matchIdx = parseInt(hash.split("match=")[1], 10);
+  } else if(params.has("match")){
+    matchIdx = parseInt(params.get("match"), 10);
+  }
+  if(!isNaN(matchIdx) && matches[matchIdx]){
+    setTimeout(() => {
+      openMatch(matchIdx);
+      if(status(matches[matchIdx]) === "LIVE") {
+        startWatch();
+      }
+    }, 500);
+  }
+}
+
+function collectServers(m){
+  let list = [];
+  let count = 1;
+  if(m?.stream_url_alpha) {
+    for(let name in m.stream_url_alpha) {
+      if(m.stream_url_alpha[name]) {
+        list.push({ name: "Server " + count, url: m.stream_url_alpha[name] });
+        count++;
+      }
+    }
+  }
+  if(m?.stream_url_bravo) {
+    for(let name in m.stream_url_bravo) {
+      if(m.stream_url_bravo[name]) {
+        list.push({ name: "Server " + count, url: m.stream_url_bravo[name] });
+        count++;
+      }
+    }
+  }
+  return list;
+}
+</script>
+<script>
+function liveCard(m,i, index=0){
+  return `
+  <article class="live-card lazy-card" style="animation-delay:${index * 0.08}s" onclick="openMatch(${i})">
+    <div class="live-thumb-top" style="background-image:url('${esc(image(m))}')"></div>
+    <div class="live-card-content">
+      <div class="schedule-time-tag">⏱ ${esc(formatToIST(m.time))}</div>
+      <div class="schedule-match-title">${esc(m.title || "Live Match")}</div>
+      <div class="schedule-match-synopsis">${esc(m.synopsis || category(m))}</div>
+    </div>
+  </article>
+  `;
+}
+
+function renderLive(){
+  const live = matches.filter(m => status(m)==="LIVE");
+  $("liveRail").innerHTML = live.length ? live.map((m, idx) => liveCard(m, matches.indexOf(m), idx)).join("") : `<div style="padding:16px 2px;color:#666860;font-size:8px">No live signals right now.</div>`;
+  $("liveGrid").innerHTML = live.length ? live.map((m, idx) => matchPoster(m, idx)).join("") : `<div style="color:#666860;font-size:8px">Nothing live right now.</div>`;
+}
+
+function renderEventsHome(){
+  const tournaments = [...new Set(matches.map(category))];
+  $("worldGrid").innerHTML = tournaments.map((name,i)=>{
+    const list = matches.filter(m => category(m)===name);
+    return `<article class="world-card ${i===0?"large":""} lazy-card" style="animation-delay:${i * 0.1}s" onclick='openEvent("${esc(name)}")'><div class="world-art" style="background-image:url('${esc(image(list[0]))}')"></div><div class="world-copy"><div class="world-number">${list.length} MATCHES</div><div class="world-name">${esc(name)}</div></div></article>`;
+  }).join("");
+}
+
+function matchPoster(m, index=0){
+  const i = matches.indexOf(m);
+  const live = status(m)==="LIVE";
+  const imgUrl = image(m);
+  return `
+  <article class="match-poster lazy-card" style="animation-delay:${index * 0.06}s" onclick="openMatch(${i})">
+    <div class="poster-thumb-top" style="background-image:url('${esc(imgUrl)}')"></div>
+    <div class="poster-card-content">
+      <div class="poster-time-tag">⏱ ${esc(formatToIST(m.time))}</div>
+      <div class="poster-match-title">${esc(m.title || "Match")}</div>
+      <div class="poster-match-synopsis">${esc(m.synopsis || category(m))}</div>
+    </div>
+  </article>
+  `;
+}
+
+function renderEventsPage(){
+  const tournaments = [...new Set(matches.map(category))];
+  $("eventsGrid").innerHTML = tournaments.map((name, idx)=>{
+    const list = matches.filter(m => category(m)===name);
+    return `<article class="match-poster lazy-card" style="animation-delay:${idx * 0.08}s" onclick='openEvent("${esc(name)}")'><div class="poster-thumb-top" style="background-image:url('${esc(image(list[0]))}')"></div><div class="poster-card-content"><div class="poster-match-title" style="font-size:13px">${esc(name)}</div><div class="poster-match-synopsis">${list.length} Matches Available</div></div></article>`;
+  }).join("");
+}
+
+function scheduleCardRow(m, index=0){
+  const i = matches.indexOf(m);
+  const imgUrl = image(m);
+  return `
+  <div class="schedule-card lazy-card" style="animation-delay:${index * 0.06}s" onclick="openMatch(${i})">
+    <div class="schedule-thumb-top" style="background-image:url('${esc(imgUrl)}')"></div>
+    <div class="schedule-card-content">
+      <div class="schedule-time-tag">⏱ ${esc(formatToIST(m.time))}</div>
+      <div class="schedule-match-title">${esc(m.title || "Match")}</div>
+      <div class="schedule-match-synopsis">${esc(m.synopsis || category(m))}</div>
+    </div>
+  </div>
+  `;
+}
+
+function renderSchedule(){
+  const list = matches.filter(m => status(m)!=="COMPLETED");
+  $("homeSchedule").innerHTML = list.slice(0,6).map((m, idx) => scheduleCardRow(m, idx)).join("");
+  $("fullSchedule").innerHTML = list.map((m, idx) => scheduleCardRow(m, idx)).join("");
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/shaka-player.ui.js" crossorigin="anonymous"></script>
+
+<script>
+// SMOOTH 0.2S FADE TRANSITION CONTROLLER
+function showFirstTgPopup(){
+  setTimeout(() => {
+    $("tgPopup1").classList.add("show");
+  }, 400);
+}
+
+function proceedToSecondPopup(){
+  $("tgPopup1").classList.remove("show");
+  setTimeout(() => {
+    $("tgPopup2").classList.add("show");
+  }, 200);
+}
+
+function closeTgPopup2(){
+  $("tgPopup2").classList.remove("show");
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  showFirstTgPopup();
+});
+
+function openMatch(i){
+  selected = matches[i];
+  if(!selected) return;
+  const isLive = status(selected) === "LIVE";
+  $("matchBackground").style.backgroundImage = `url("${image(selected)}")`;
+  $("matchStatus").textContent = isLive ? "● LIVE SIGNAL" : status(selected);
+  $("matchTitle").textContent = selected.title || "Match";
+  $("matchInfo").textContent = `${category(selected)} · ${isLive ? "HAPPENING NOW" : esc(formatToIST(selected.time))}`;
+  const actionContainer = $("matchActionContainer");
+  if(isLive){
+    actionContainer.innerHTML = `<button class="watch-live-btn" onclick="startWatch()"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>WATCH LIVE</button>`;
+  } else {
+    actionContainer.innerHTML = `<div style="color:var(--soft); font-size:8px; font-weight:700; letter-spacing:1px; background:rgba(255,255,255,0.04); border:1px solid var(--line); display:inline-block; padding:8px 14px; border-radius:8px;">⏳ MATCH COMMENCING SOON · STAY TUNED</div>`;
+  }
+  $("matchLayer").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+
+function closeMatch(){ $("matchLayer").classList.remove("open"); document.body.style.overflow=""; }
+function closePlayerModal(){
+  const playerLayer = document.getElementById("playerModalLayer");
+  if(playerLayer) playerLayer.remove();
+  document.body.style.overflow="";
+  if(player){ player.destroy(); player = null; }
+}
+
+function startWatch(){ 
+  closeMatch(); 
+  if(selected) {
+    const idx = matches.indexOf(selected);
+    if(idx !== -1) history.replaceState(null, "", window.location.pathname + "#match=" + idx);
+  }
+  buildPlayerModal(); 
+}
+
+function buildPlayerModal(){
+  if(!selected) return;
+  serverList = collectServers(selected);
+  if(!serverList.length){ alert("Stream link not available for this match yet."); return; }
+
+  let playerLayer = document.getElementById("playerModalLayer");
+  if(!playerLayer){ playerLayer = document.createElement("div"); playerLayer.id = "playerModalLayer"; document.body.appendChild(playerLayer); }
+
+  const cleanTitle = (selected.title || "Live Stream").replace(/\[.*?\]/g, "").trim();
+  
+  playerLayer.innerHTML = `
+    <div class="player-modal-wrapper">
+      <header class="player-top-nav">
+        <div class="player-top-brand">CricxCrate</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="custom-server-dropdown" id="serverDropdownContainer">
+            <button class="server-chip" onclick="toggleServerDropdown()">
+              <span id="currentServerLabel">${serverList[0].name}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="server-dropdown-menu" id="serverDropdownMenu">
+              ${serverList.map((s, idx) => `
+                <div class="server-option ${idx === 0 ? 'active' : ''}" onclick="selectServer(${idx})">
+                  <span>${s.name}</span>${idx === 0 ? '<span style="width:4px;height:4px;background:var(--lime);border-radius:50%;box-shadow:0 0 5px var(--lime)"></span>' : ''}
+                </div>
+              `).join("")}
+            </div>
+          </div>
+          <button class="player-close-action" onclick="closePlayerModal()">✕ CLOSE</button>
+        </div>
+      </header>
+      <div class="player-content-body">
+        <div class="player-rig-box" id="playerContainer" data-shaka-player-container>
+          <div class="buffering-overlay active" id="bufferingOverlay">
+            <div class="spinner"></div>
+            <div class="buffering-text">CONNECTING STREAM...</div>
+          </div>
+          <video data-shaka-player id="videoStream" autoplay crossorigin="anonymous" style="width:100%;height:100%;background:#000;"></video>
+        </div>
+        <div class="player-meta-bar">
+          <div class="stream-title-group">
+            <strong>${esc(cleanTitle)}</strong>
+            <span>${esc(category(selected))} · CricxCrate HD Network</span>
+          </div>
+          <button class="share-action-btn" id="btnShare">
+            <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"></polyline></svg>
+            <span id="shareBtnText">SHARE STREAM</span>
+          </button>
+        </div>
+        <div class="player-community-card">
+          <div class="player-comm-title">Stay connected.<br><span>Never miss a match.</span></div>
+          <a class="comm-join-btn" href="${TELEGRAM}" target="_blank" rel="noopener">JOIN COMMUNITY ↗</a>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.style.overflow = "hidden";
+
+  playerLayer.querySelector("#btnShare").addEventListener("click", async () => {
+    try {
+      if (navigator.share) await navigator.share({ title: cleanTitle, url: window.location.href });
+      else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(window.location.href);
+        const txt = playerLayer.querySelector("#shareBtnText");
+        txt.textContent = "COPIED!";
+        setTimeout(() => txt.textContent = "SHARE STREAM", 1500);
+      }
+    } catch(e){}
+  });
+
+  currentServerIndex = 0;
+  initShakaPlayer(serverList[0].url);
+}
+
+function toggleServerDropdown(){
+  $("serverDropdownContainer").classList.toggle("open");
+}
+
+document.addEventListener("click", (e) => {
+  const dropdown = $("serverDropdownContainer");
+  if(dropdown && !dropdown.contains(e.target)){
+    dropdown.classList.remove("open");
+  }
+});
+
+function selectServer(index){
+  currentServerIndex = index;
+  $("serverDropdownContainer").classList.remove("open");
+  
+  const options = document.querySelectorAll(".server-option");
+  options.forEach((opt, idx) => opt.classList.toggle("active", idx === index));
+  $("currentServerLabel").textContent = serverList[index].name;
+
+  const buff = $("bufferingOverlay");
+  if(buff) buff.classList.add("active");
+
+  initShakaPlayer(serverList[index].url);
+}
+
+async function initShakaPlayer(manifestUri) {
+  const video = document.getElementById('videoStream');
+  const container = document.getElementById('playerContainer');
+  if(!video) return;
+
+  if (player) {
+    await player.destroy();
+    player = null;
+  }
+
+  shaka.polyfill.installAll();
+  if (!shaka.Player.isBrowserSupported()) return;
+
+  player = new shaka.Player(video);
+  ui = new shaka.ui.Overlay(player, container, video);
+
+  player.addEventListener('buffering', (event) => {
+    const buff = $("bufferingOverlay");
+    if(buff) {
+      if(event.buffering) buff.classList.add("active");
+      else buff.classList.remove("active");
+    }
+  });
+
+  // AUTOMATIC SERVER FALLBACK ON FAILURE
+  player.addEventListener('error', (event) => {
+    handleServerFallback();
+  });
+
+  if (selected?.drm_key && selected.drm_key.includes(":")) {
+    const [keyId, key] = selected.drm_key.split(":").map(s => s.trim());
+    player.configure({
+      drm: { clearKeys: { [keyId]: key } }
+    });
+  }
+
+  try {
+    await player.load(manifestUri);
+    const buff = $("bufferingOverlay");
+    if(buff) buff.classList.remove("active");
+  } catch (e) {
+    handleServerFallback();
+  }
+}
+
+function handleServerFallback() {
+  currentServerIndex++;
+  if (currentServerIndex < serverList.length) {
+    $("currentServerLabel").textContent = serverList[currentServerIndex].name;
+    const options = document.querySelectorAll(".server-option");
+    options.forEach((opt, idx) => opt.classList.toggle("active", idx === currentServerIndex));
+    initShakaPlayer(serverList[currentServerIndex].url);
+  } else {
+    const buff = $("bufferingOverlay");
+    if(buff) {
+      buff.querySelector(".buffering-text").textContent = "SWITCHING BACKUP...";
+    }
+  }
+}
+
+function openSearch(){ $("search").classList.add("open"); $("searchInput").value=""; renderSearch(""); setTimeout(() => $("searchInput").focus(), 100); }
+function closeSearch(){ $("search").classList.remove("open"); }
+function renderSearch(query){
+  query = query.trim().toLowerCase();
+  if(!query){ $("searchResults").innerHTML = `<div style="color:#666860;font-size:8px">Search matches, tournaments and events.</div>`; return; }
+  const result = matches.filter(m => [m.title, m.tournament, category(m), m.synopsis].join(" ").toLowerCase().includes(query));
+  $("searchResults").innerHTML = result.length ? `<div class="match-grid">${result.map((m, idx) => matchPoster(m, idx)).join("")}</div>` : `<div style="color:#666860;font-size:8px">No results.</div>`;
+}
+$("searchInput").addEventListener("input", e => renderSearch(e.target.value));
+
+function openEvent(name){ 
+  showPage("eventDetailModal"); 
+  setActive("events"); 
+  const list = matches.filter(m => category(m)===name); 
+  $("eventTitle").textContent = name + "."; 
+  $("eventSubtitle").textContent = `${list.length} matches available`; 
+  $("eventGrid").innerHTML = list.map((m, idx) => matchPoster(m, idx)).join(""); 
+}
+
+function showPage(id, push=true){
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  $(id).classList.add("active");
+  window.scrollTo(0,0);
+  if(push) history.pushState({page: id}, "", "#" + id);
+}
+
+window.addEventListener("popstate", (e) => {
+  const targetPage = e.state?.page || "home";
+  showPage(targetPage, false);
+  closeSearch(); closeMatch(); closePlayerModal();
+});
+
+function setActive(name){
+  document.querySelectorAll("[data-nav]").forEach(b => b.classList.toggle("active", b.dataset.nav===name));
+  document.querySelectorAll("[data-mobile]").forEach(b => b.classList.toggle("active", b.dataset.mobile===name));
+}
+
+function goHome(){ showPage("home"); setActive("home"); }
+function goLive(){ showPage("livePage"); setActive("live"); renderLive(); }
+function goEvents(){ showPage("eventsPage"); setActive("events"); renderEventsPage(); }
+function goSchedule(){ showPage("schedulePage"); setActive("schedule"); renderSchedule(); }
+
+window.addEventListener("scroll", ()=>{ $("nav").classList.toggle("scrolled", scrollY>20); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeSearch(); closeMatch(); closePlayerModal(); $("tgPopup1").classList.remove("show"); $("tgPopup2").classList.remove("show"); } });
+
+document.addEventListener("click", function(e){
+  const target = e.target.closest("button, .live-card, .match-poster, .schedule-card, .world-card");
+  if(!target) return;
+  const circle = document.createElement("span");
+  circle.classList.add("ripple");
+  const rect = target.getBoundingClientRect();
+  const diameter = Math.max(rect.width, rect.height);
+  circle.style.width = circle.style.height = `${diameter}px`;
+  circle.style.left = `${e.clientX - rect.left - diameter/2}px`;
+  circle.style.top = `${e.clientY - rect.top - diameter/2}px`;
+  target.appendChild(circle);
+  setTimeout(() => circle.remove(), 500);
+});
+
+function renderEverything(){ renderLive(); renderEventsHome(); renderEventsPage(); renderSchedule(); }
+loadFeed();
+</script>
+</html>
